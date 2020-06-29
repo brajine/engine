@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <title>Metatrader.live {{.Page}} report</title>  
+  <meta name="description" content="Metatrader.live allows easy streaming of trade data. API is available." />
+  <style>
+    @import url('https://fonts.googleapis.com/css?family=Open+Sans:300,400');
+    body {
+      background: #f5f5f5;
+      color: rgba(52, 52, 52, 1);
+      font-family: 'Open Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+    .content {
+      margin: auto;
+      max-width: 980px;
+      min-width: 640px;
+      padding: 0 30px;
+    }
+    .rvalue {
+      width: 20%;
+      text-align: right;
+    }
+    .lvalue {
+      width: 30%;
+      padding-left: 10px;
+      text-align: left;
+    }
+    table { 
+      background:white;
+      border-collapse: collapse; 
+      border-radius:6px;
+      width:100%;
+    }    
+    thead tr  { 
+      height:30px;
+      background:lightgreen;
+    } 
+    tbody tr { 
+      height:30px; 
+      border-bottom:1px solid #f5f5f5;
+    }
+    th, td {
+      font-weight:normal;
+      text-align: center;
+    }   
+    h1, h2 {
+      font-size: 40px;
+      font-weight: 300;
+      margin: 0.5em 0;
+      text-align: center;
+    }
+    h2 {
+      margin-top: 1em;
+      font-size: 30px;
+    }
+  </style>
+
+  <script type="text/javascript">
+    window.onload = function () {
+      var socket = new WebSocket("ws://127.0.0.1:8182/accounts/{{.Page}}/ws");
+
+      const ORDER_TYPE_BUY             = '0'
+      const	ORDER_TYPE_SELL            = '1'
+      const	ORDER_TYPE_BUY_LIMIT       = '2'
+      const	ORDER_TYPE_SELL_LIMIT      = '3'
+      const	ORDER_TYPE_BUY_STOP        = '4'
+      const	ORDER_TYPE_SELL_STOP       = '5'
+      const	ORDER_TYPE_BUY_STOP_LIMIT  = '6'
+      const	ORDER_TYPE_SELL_STOP_LIMIT = '7'
+
+      socket.onmessage = function(event) {
+        obj = JSON.parse(event.data);
+
+        function ticketExist(orders, ticket) {
+          if ( orders.hasOwnProperty(ticket) ) return true
+          return false
+        }
+
+        // Check if pending order transformed to market
+        function orderTypeCorrect(orders, ticket) {
+          ord = orders[ticket]
+          if ( ord.type != ORDER_TYPE_BUY && ord.type != ORDER_TYPE_SELL ) return true
+          ordersTable = document.getElementById('ordersTable')
+          var rows = ordersTable.getElementsByTagName("tr");
+          if ( ticket in rows ) return false
+          return true
+        }
+
+        function removeRow(key) {
+          item = document.getElementById(key)
+          item.remove()
+        }
+
+        function updateValue(name, ticket, value) {
+          id = name + '_' + ticket
+          cell = document.getElementById(id)
+          old = cell.innerHTML
+          cell.innerHTML = value
+        }
+
+        function updateRow(orders, ticket) {
+          ord = orders[ticket]
+          isPending = false
+          if ( ord.type != ORDER_TYPE_BUY && ord.type != ORDER_TYPE_SELL ) isPending = true
+          updateValue('ticket', ticket, ticket)
+          updateValue('symbol', ticket, ord.symbol)
+          updateValue('timeopen', ticket, ord.timeopen)
+          updateValue('type', ticket, getOrderTypeName(ord.type))
+          if ( isPending ) updateValue('initvolume', ticket, ord.initvolume)
+          updateValue('curvolume', ticket, ord.curvolume)
+          updateValue('priceopen', ticket, ord.priceopen)
+          updateValue('stoploss', ticket, ord.sl)
+          updateValue('takeprofit', ticket, ord.tp)
+          if ( !isPending ) updateValue('swap', ticket, ord.swap)
+          if ( !isPending ) updateValue('profit', ticket, ord.profit)
+          if ( isPending ) updateValue('pricesl', ticket, ord.pricesl)
+        }
+
+        function addCell(row, ticket, cellId, cellValue) {
+          cell = row.insertCell()
+          cell.id = cellId + '_' + ticket
+          if ( cellValue != '' ) cell.innerHTML = cellValue
+          else cell.innerHTML = "<i>N/A</i>"
+        }
+
+        function getOrderTypeName(type) {
+          switch ( ord.type ) {
+            case ORDER_TYPE_BUY : 
+              return "BUY"
+            case ORDER_TYPE_SELL : 
+              return "SELL"
+            case ORDER_TYPE_BUY_LIMIT : 
+              return "BUY LIMIT"
+            case ORDER_TYPE_SELL_LIMIT : 
+              return "SELL LIMIT"
+            case ORDER_TYPE_BUY_STOP : 
+              return "BUY STOP"
+            case ORDER_TYPE_SELL_STOP : 
+              return "SELL STOP"
+            case ORDER_TYPE_BUY_STOP_LIMIT : 
+              return "BUY STOP LIMIT"
+            case ORDER_TYPE_SELL_STOP_LIMIT : 
+              return "SELL STOP LIMIT"
+            default: return "<i>N/A</i>"
+          }
+        }
+
+        function addRow(orders, ticket) {
+          ord = orders[ticket]
+          table = document.getElementById('positionsTable')
+          isPending = false
+          if ( ord.type != ORDER_TYPE_BUY && ord.type != ORDER_TYPE_SELL ) {
+            isPending = true
+            table = document.getElementById('ordersTable')
+          }
+          row = table.getElementsByTagName('tbody')[0].insertRow()
+          row.id = ticket
+
+          addCell(row, ticket, 'ticket', ticket)
+          addCell(row, ticket, 'symbol', ord.symbol)
+          addCell(row, ticket, 'timeopen', ord.timeopen)
+          addCell(row, ticket, 'type', getOrderTypeName(ord.type))
+          if ( isPending ) addCell(row, ticket, 'initvolume', ord.initvolume)
+          addCell(row, ticket, 'curvolume', ord.curvolume)
+          addCell(row, ticket, 'priceopen', ord.priceopen)
+          addCell(row, ticket, 'stoploss', ord.stoploss)
+          addCell(row, ticket, 'takeprofit', ord.takeprofit)
+          if ( !isPending ) addCell(row, ticket, 'swap', ord.swap)
+          if ( !isPending ) addCell(row, ticket, 'profit', ord.profit)
+          if ( isPending ) addCell(row, ticket, 'pricesl', ord.pricesl)
+        }
+
+        function showSection(name) {
+          table = document.getElementById(name + "Table")
+          header = document.getElementById(name + "Header")
+          if ( table.rows.length > 1  ) {
+            table.style.display="table";
+            header.style.display="block";
+          } else {
+            table.style.display="none";
+            header.style.display="none";
+          }
+        }
+
+        // Parse trade data
+        if (obj.hasOwnProperty('orders')) {
+          // Remove closed orders from tables
+          var rowsToRemove = []
+          var rows = document.getElementsByTagName('tr')
+          Object.values(rows).forEach(function (row){
+            if ( row.id != '' && !ticketExist(obj.orders, row.id) ) rowsToRemove.push(row)
+          });
+          rowsToRemove.forEach(function(row) {
+            row.remove()
+          })
+
+          // Modify / append new orders
+          var ids = []
+          rows = document.getElementsByTagName('tr');
+          Object.values(rows).forEach(function (row) {
+            if ( row.id != '' ) ids.push(row.id)
+          })
+          Object.keys(obj.orders).forEach(function (ticket){
+            if ( ids.includes(ticket) ) {
+              if ( orderTypeCorrect(obj.orders, ticket) ) updateRow(obj.orders, ticket)
+              else {
+                removeRow(ticket)
+                addRow(obj.orders, ticket)
+              }
+            } else {
+              if ( ticket != "" ) addRow(obj.orders, ticket)
+            }
+          })
+
+          // Hide empty tables
+          showSection('positions')
+          showSection('orders')
+        }
+
+        updateAccountValue('server', obj.server)
+        updateAccountValue('name', obj.name)
+        updateAccountValue('company', obj.company)
+        updateAccountValue('login', obj.login)
+        updateAccountValue('balance', obj.balance)
+        updateAccountValue('freemargin', obj.freemargin)
+        updateAccountValue('equity', obj.equity)
+        updateAccountValue('margin', obj.margin)
+        updateAccountValue('marginlevel', obj.marginlevel)
+        updateAccountValue('profittotal', obj.profittotal)
+
+        function updateAccountValue(name, val) {
+          id = 'account_' + name
+          p = document.getElementById(id)
+          if ( p != null ){
+            if ( obj.hasOwnProperty(name) && val != "" ) {
+              p.innerHTML = val
+              document.getElementById('accHeader').style.visibility = "visible";
+              document.getElementById('accTable').style.visibility = "visible";
+            } else p.innerHTML = "<i>N/A</i>"
+          }
+        }
+      }
+    }
+</script>
+
+</head>
+<body>
+  
+<div class="content">
+    <h1>Live Trades Report</h1>
+    
+    <h2 id="positionsHeader">Opened positions</h2>
+    <table id="positionsTable">
+        <thead>
+            <tr>
+                <th>Ticket</th>
+                <th>Symbol</th>
+                <th>Time Open</th>
+                <th>Type</th>
+                <th>Volume</th>
+                <th>Price open</th>
+                <th>Stoploss</th>
+                <th>Takeprofit</th>
+                <th>Swap</th>
+                <th>Profit</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <h2 id="ordersHeader">Pending orders</h2>
+    <table id="ordersTable">
+        <thead>
+            <tr>
+                <th>Ticket</th>
+                <th>Symbol</th>
+                <th>Time Open</th>
+                <th>Type</th>
+                <th>Init Volume</th>
+                <th>Cur Volume</th>
+                <th>Price open</th>
+                <th>Stoploss</th>
+                <th>Takeprofit</th>
+                <th>Price SL</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <h2 id="accHeader" style="visibility:hidden;">Account</h2>
+    <table id="accTable" style="background: none; visibility: hidden;">
+        <tbody>
+            <tr>
+              <td class="rvalue">Server:</td>
+              <td class="lvalue" id="account_server"></td>
+              <td class="rvalue">Name:</td>
+              <td class="lvalue" id="account_name"></td>
+            </tr>
+            <tr>
+              <td class="rvalue">Company:</td>
+              <td class="lvalue" id="account_company"></td>
+              <td class="rvalue">Login:</td>
+              <td class="lvalue" id="account_login"></td>
+            </tr>
+            <tr><td colspan="4"></td></tr>
+            <tr>
+              <td class="rvalue">Balance:</td>
+              <td class="lvalue" id="account_balance"></td>
+              <td class="rvalue">FreeMargin:</td>
+              <td class="lvalue" id="account_freemargin"></td>
+            </tr>
+            <tr>
+              <td class="rvalue">Equity:</td>
+              <td class="lvalue" id="account_equity"></td>
+              <td class="rvalue">Margin:</td>
+              <td class="lvalue" id="account_margin"></td>
+            </tr>
+            <tr>
+              <td class="rvalue">MarginLevel:</td>
+              <td class="lvalue" id="account_marginlevel"></td>
+              <td class="rvalue">ProfitTotal:</td>
+              <td class="lvalue" id="account_profittotal"></td>
+            </tr>
+        </tbody>
+    </table>    
+
+    <p id="debugMsg"></p>
+</div>
+
+</body>
+</html>

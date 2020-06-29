@@ -1,0 +1,18 @@
+<html>
+	<body>
+        <h2>Metatrader.live statistics</h2>
+        <p>Online {{.TotalConnected}} clients</p>
+        <table width="600px">
+            <tr>
+                <th>Page</th>
+                <th>Updated</th>
+            </tr>
+            {{range .Clients}}
+                <tr>
+                <td align="center"><a href="{{.URL}}">{{.Page}}</a></td>
+                <td align="center">{{.Updated}}</td>
+                </tr>
+            {{end}}
+        </table>
+	</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "ClientVersion": "0.1",                       10
+  "Interface": "Trades",                        32
+  "Page": "mytestpage",                         32
+  "UpdateFreq": "second",                       32
+  "Name": "myname",                             32
+  "Login": "13411525",                          32
+  "Server": "MetaQuotes-Demo",                  32
+  "Company": "Private company",                 32
+  "Balance": "1000.00",                         10
+  "Equity": "0.00",                             10
+  "Margin": "0.00",                             10
+  "FreeMargin": "0.00",                         10
+  "MarginLevel": "0.00",                        10
+  "ProfitTotal": "335.85",                      10
+  "Ticket": ["325145411"],                      (10 * 15)
+  "Symbol": ["EURJPY"],                         (10 * 15)
+  "TimeOpen": ["2018.11.22 14:55:35"],          (32 * 15)
+  "Type": ["2"],                                (10 * 15)
+  "InitVolume": ["0"],                          (10 * 15)
+  "CurVolume": ["0.07"],                        (10 * 15)
+  "PriceOpen": ["128.922"],                     (10 * 15)
+  "SL": ["0"],                                  (10 * 15)
+  "TP": ["0"],                                  (10 * 15)
+  "Swap": ["-3.26"],                            (10 * 15)
+  "PriceSL": ["0"],                             (10 * 15)
+  "Profit": ["335.85"],                         (10 * 15)
+} 
+
+Max Update message length: 2424
+
+
+{
+  "Error": "Error text or null",
+  "Message": "There is an available update"
+}
