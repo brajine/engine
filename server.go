@@ -6,17 +6,19 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
-	"mtlive/data"
 	"net"
 	"net/http"
 	"os"
-	"strconv"
+	"os/signal"
 	"time"
+
+	"../engine/data"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -47,31 +49,27 @@ var MTListener TCPServer
 // Storage is primary data structure
 var Storage data.MainStorage
 
-// StatsHandler is a handler for statistics /stat page
-func StatsHandler(w http.ResponseWriter, r *http.Request) {
-	type client struct {
-		URL, Page, Updated string
-	}
-	type tmplData struct {
-		TotalConnected string
-		Clients        []client
+// apiHandler is a handler for server api
+func apiHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	page := vars["page"]
+
+	if page == "stats" {
+		type stats struct {
+			Online    int `json:"online"`
+			Online24h int `json:"online24h"`
+		}
+		st := stats{
+			Online:    Storage.ClientsNum(),
+			Online24h: 5,
+		}
+		bt, _ := json.Marshal(st)
+		w.Write(bt)
+		return
 	}
 
-	vd := new(tmplData)
-	s := strconv.Itoa(Storage.ClientsNum())
-	vd.TotalConnected = s
-	accs := Storage.ExportAccArray()
-	for _, acc := range accs {
-		var c client
-		c.Page = acc.Page()
-		c.Updated = acc.Updated()
-		c.URL = "http://127.0.0.1:8182/accounts/" + acc.Page() + "/view"
-		// c.URL = "http://metatrader.live/accounts/" + acc.Page() + "/view"
-		vd.Clients = append(vd.Clients, c)
-	}
-
-	tmpl := template.Must(template.ParseFiles("templates/stats.htm"))
-	tmpl.Execute(w, vd)
+	// Not found
+	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 }
 
 // ViewHandler is a handler for Account /view page
@@ -301,17 +299,30 @@ func main() {
 
 	// TCP server on 8181 to listen MT clients
 	go MTListener.Run(":8181")
-	Trace.Println("MetaTrader listener is up on :8181")
+	Trace.Println("MetaTrader listener is up and running on :8181")
 
 	// HTTP server to serve data
 	r := mux.NewRouter()
-	r.HandleFunc("/stats", StatsHandler)
+	r.HandleFunc("/api/{page}", apiHandler)
 	r.HandleFunc("/accounts/{page}/view", ViewHandler)
 	r.HandleFunc("/accounts/{page}/ws", WsHandler)
 
-	Trace.Println("Stats available on http://127.0.0.1:8182/stats")
-	Trace.Println("Account available on http://127.0.0.1:8182/accounts/{page}/view")
-	Trace.Println("")
+	// Running GO app as a service
+	// https://fabianlee.org/2017/05/21/golang-running-a-go-binary-as-a-systemd-service-on-ubuntu-16-04/
+
+	// setup signal catching
+	sigs := make(chan os.Signal, 1)
+
+	// catch all signals since not explicitly listing
+	signal.Notify(sigs)
+	// signal.Notify(sigs,syscall.SIGQUIT)
+
+	// method invoked upon seeing signal
+	go func() {
+		s := <-sigs
+		log.Printf("RECEIVED SIGNAL: %s", s)
+		os.Exit(1)
+	}()
 
 	err := http.ListenAndServe(":8182", r)
 	if err != nil {
