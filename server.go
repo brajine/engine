@@ -268,8 +268,12 @@ func decodeUintReader(r io.Reader, buf []byte) (x uint64, width int, err error) 
 
 	// FF 82 = 130
 	// FE 01 00 = 256
-	len := ^buf[0] + 1
-	width, err = io.ReadFull(r, buf[1:len+1])
+	sz := ^buf[0] + 1
+	// FIX for server scan panics
+	if int(sz) > len(buf)-2 {
+		return
+	}
+	width, err = io.ReadFull(r, buf[1:sz+1])
 	if err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
