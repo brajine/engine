@@ -258,7 +258,7 @@ func readChunk(conn net.Conn, bb *bytes.Buffer, readsz *int) error {
 func decodeUintReader(r io.Reader, buf []byte) (x uint64, width int, err error) {
 	n, err := io.ReadFull(r, buf[0:1])
 	if n == 0 {
-		err = errors.New("")
+		err = errors.New("Message is empty")
 		return
 	}
 	if buf[0] <= 0x7f {
@@ -270,8 +270,8 @@ func decodeUintReader(r io.Reader, buf []byte) (x uint64, width int, err error) 
 	// FE 01 00 = 256
 	sz := ^buf[0] + 1
 	// FIX for server scan panics
-	if int(sz) > len(buf)-2 {
-		return
+	if int(sz)+1 > len(buf) {
+		return 0, 0, errors.New("Wrong message length")
 	}
 	width, err = io.ReadFull(r, buf[1:sz+1])
 	if err != nil {
