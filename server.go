@@ -139,20 +139,13 @@ func (mt *TCPServer) Handle(conn net.Conn) {
 
 	// Validate first message
 	if err := msg.Validate(); err != nil {
-		Error.Println("Message validate error:", err)
-		resp := data.ResponseMsg{
-			Error: err.Error(),
-		}
-		writeMessage(enc, resp)
+		writeErrorMessage(enc, err.Error(), conn.RemoteAddr().String())
 		return
 	}
 
 	// Page address already exists
 	if Storage.PageExist(msg.Page) != nil {
-		resp := data.ResponseMsg{
-			Error: "Page address " + string(msg.Page) + " is already in use. Please try another.",
-		}
-		writeMessage(enc, resp)
+		writeErrorMessage(enc, "Page address "+string(msg.Page)+" is already in use.", conn.RemoteAddr().String())
 		return
 	}
 
@@ -163,7 +156,7 @@ func (mt *TCPServer) Handle(conn net.Conn) {
 	Trace.Println("New client registered: \"" + connPage + "\"")
 
 	// Messaging loop
-	var num, sec int
+	var num, sec int64
 	timeout := 5 * time.Second
 	if msg.UpdateFreq != "second" {
 		timeout = 1*time.Minute + 5*time.Second
@@ -171,24 +164,20 @@ func (mt *TCPServer) Handle(conn net.Conn) {
 	for {
 		// Check for messages frequency
 		if checkFrequency(&num, &sec) > 5 {
-			writeMessage(enc, data.ResponseMsg{
-				Error: "Update frequency limit exceeded",
-			})
+			writeErrorMessage(enc, "Update frequency limit exceeded", connPage)
 			return
 		}
 
 		// Read message
 		conn.SetReadDeadline(time.Now().Add(timeout))
 		if err := dec.Decode(&msg); err != nil {
-			Error.Println("Message decode error:", err)
+			Error.Println("Message decode error for \""+connPage+"\":", err)
 			return
 		}
 
 		// Validate message
 		if err := msg.Validate(); err != nil {
-			writeMessage(enc, data.ResponseMsg{
-				Error: err.Error(),
-			})
+			writeErrorMessage(enc, err.Error(), connPage)
 			continue
 		}
 
@@ -202,11 +191,14 @@ func (mt *TCPServer) Handle(conn net.Conn) {
 }
 
 // Write a response to Metatrader client
-func writeMessage(enc *gob.Encoder, resp data.ResponseMsg) error {
-	if resp.Error != "" {
-		Error.Println(resp.Error)
+// If page is set, then output console message also
+func writeErrorMessage(enc *gob.Encoder, errMsg, page string) {
+	if page != "" {
+		Error.Println(errMsg, "for \""+page+"\"")
 	}
-	return enc.Encode(resp)
+	enc.Encode(data.ResponseMsg{
+		Error: errMsg,
+	})
 }
 
 func writeOkMessage(enc *gob.Encoder) error {
@@ -214,10 +206,10 @@ func writeOkMessage(enc *gob.Encoder) error {
 }
 
 // Return number of messages per second
-func checkFrequency(num, sec *int) int {
+func checkFrequency(num, sec *int64) int64 {
 	// Message frequency limit
-	if *sec != time.Now().Second() {
-		*sec = time.Now().Second()
+	if *sec != time.Now().Unix() {
+		*sec = time.Now().Unix()
 		*num = 0
 	} else {
 		*num++
