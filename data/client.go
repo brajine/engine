@@ -20,8 +20,9 @@ func (client *TradesAccount) Init(msg *TradesMsg) {
 	client.acc.Orders = make(map[string]OrderType)
 	client.Update(msg)
 
-	// Only allow Page set upon first connect
+	// Set Page & Started on new connection
 	client.acc.Page = msg.Page
+	client.acc.Started = time.Now()
 }
 
 // Update update existing MT Client account with new data
@@ -146,6 +147,11 @@ func (client *TradesAccount) Page() string {
 // Updated return sting with last update time
 func (client *TradesAccount) Updated() string {
 	return client.acc.Updated.Format("2006-01-02 15:04:05")
+}
+
+// Started return sting with account initialization time
+func (client *TradesAccount) Started() string {
+	return client.acc.Started.Format("2006-01-02 15:04:05")
 }
 
 // ToJSON create json message for WebSockets

@@ -21,6 +21,19 @@ type MainStorage struct {
 	pages        map[string]*TradesAccount
 }
 
+// StateEntry used to
+type StateEntry struct {
+	Page       string `json:"page"`
+	Started    string `json:"started"`
+	UpdateFreq string `json:"updateFreq"`
+}
+
+// StateData used to export state information through /api/state
+type StateData struct {
+	Online   int          `json:"online"`
+	Accounts []StateEntry `json:"accounts"`
+}
+
 // Initialize main storage
 func (s *MainStorage) Initialize() {
 	s.clients = make(map[net.Conn]*TradesAccount)
@@ -60,15 +73,21 @@ func (s *MainStorage) RemoveClient(conn net.Conn) {
 	}
 }
 
-// ExportAccArray return slice of account pointers for Stats page
-func (s *MainStorage) ExportAccArray() (accs []*TradesAccount) {
+// ExportState return slice of account pointers for Stats page
+func (s *MainStorage) ExportState() *StateData {
 	s.RLock()
 	defer s.RUnlock()
 
-	for _, acc := range s.clients {
-		accs = append(accs, acc)
+	st := StateData{Online: s.ClientsNum()}
+	for _, client := range s.clients {
+		entry := StateEntry{
+			Page:       client.Page(),
+			Started:    client.Started(),
+			UpdateFreq: client.acc.UpdateFreq,
+		}
+		st.Accounts = append(st.Accounts, entry)
 	}
-	return accs
+	return &st
 }
 
 // PageExist checks if account exist in main Storage

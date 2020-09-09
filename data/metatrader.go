@@ -3,6 +3,7 @@ package data
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -24,7 +25,8 @@ const (
 type TradesMsg struct {
 	Page          string    `json:"-"`
 	ClientVersion string    `json:"-"`
-	Updated       time.Time `json:"-"`
+	Started       time.Time `json:"-"` // Connection established
+	Updated       time.Time `json:"-"` // Last time account was updated
 	UpdateFreq    string    `json:"updatefreq,omitempty"`
 	Name          string    `json:"name,omitempty"`
 	Login         string    `json:"login,omitempty"`
@@ -73,6 +75,11 @@ func (t *TradesMsg) Validate() error {
 	if err := validString(t.UpdateFreq, "UpdateFreq"); err != nil {
 		return err
 	}
+	freq := strings.ToLower(t.UpdateFreq)
+	if freq != "second" && freq != "minute" {
+		return errors.New("Update frequency is not valid")
+	}
+
 	if err := validString(t.Name, "Name"); err != nil {
 		return err
 	}
