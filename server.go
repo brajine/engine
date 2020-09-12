@@ -67,8 +67,8 @@ func restAPIHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(acc.ToJSON())
 }
 
-// wsAPIHandler is serving WebSocket connections
-func wsAPIHandler(w http.ResponseWriter, r *http.Request) {
+// wssAPIHandler is serving WebSocket connections
+func wssAPIHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page := vars["page"]
 
@@ -233,25 +233,23 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/stats", statsAPIHandler)
 	r.HandleFunc("/api/rest/{page}", restAPIHandler)
-	r.HandleFunc("/api/ws/{page}", wsAPIHandler)
+	r.HandleFunc("/api/wss/{page}", wssAPIHandler)
 
 	// Running GO app as a service
 	// https://fabianlee.org/2017/05/21/golang-running-a-go-binary-as-a-systemd-service-on-ubuntu-16-04/
 
 	// setup signal catching
 	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt)
 
-	// catch all signals since not explicitly listing
-	signal.Notify(sigs)
-
-	// method invoked upon seeing signal
+	// method invoked upon seeing one of Interrupt signals
 	go func() {
 		s := <-sigs
 		log.Printf("RECEIVED SIGNAL: %s", s)
 		os.Exit(1)
 	}()
 
-	err := http.ListenAndServeTLS(":8182", "/etc/letsencrypt/live/metatrader.live/cert.pem", "/etc/letsencrypt/live/metatrader.live/privkey.pem", r)
+	err := http.ListenAndServe(":8182", r)
 	if err != nil {
 		fmt.Println(err)
 	}
