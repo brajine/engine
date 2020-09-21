@@ -1,6 +1,8 @@
 package data
 
 import (
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -160,6 +162,293 @@ func (client *TradesAccount) ToJSON() []byte {
 	client.acc.MarshalEasyJSON(&w)
 	b, _ := w.BuildBytes()
 	return b
+}
+
+// MarshalEasyJSON overwrites EaseJSON standart handler
+// This makes orders array [] instead of map {}
+func (in TradesMsg) MarshalEasyJSON(out *jwriter.Writer) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	if in.UpdateFreq != "" {
+		const prefix string = ",\"updatefreq\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.UpdateFreq))
+	}
+	if in.Name != "" {
+		const prefix string = ",\"name\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Name))
+	}
+	if in.Login != "" {
+		const prefix string = ",\"login\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Login))
+	}
+	if in.Server != "" {
+		const prefix string = ",\"server\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Server))
+	}
+	if in.Company != "" {
+		const prefix string = ",\"company\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Company))
+	}
+	if in.Balance != "" {
+		const prefix string = ",\"balance\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Balance))
+	}
+	if in.Equity != "" {
+		const prefix string = ",\"equity\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Equity))
+	}
+	if in.Margin != "" {
+		const prefix string = ",\"margin\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Margin))
+	}
+	if in.FreeMargin != "" {
+		const prefix string = ",\"freemargin\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.FreeMargin))
+	}
+	if in.MarginLevel != "" {
+		const prefix string = ",\"marginlevel\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.MarginLevel))
+	}
+	if in.ProfitTotal != "" {
+		const prefix string = ",\"profittotal\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.ProfitTotal))
+	}
+	const prefix string = ",\"orderscount\":"
+	if first {
+		first = false
+		out.RawString(prefix[1:])
+	} else {
+		out.RawString(prefix)
+	}
+	out.String(strconv.Itoa(len(in.Orders)))
+	{
+		const prefix string = ",\"orders\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		if in.Orders == nil && (out.Flags&jwriter.NilMapAsEmpty) == 0 {
+			out.RawString(`null`)
+		} else {
+			out.RawByte('[')
+			v2First := true
+			var sorted []string
+
+			// Sort output by ticket
+			for v2Name := range in.Orders {
+				sorted = append(sorted, v2Name)
+			}
+			sort.Sort(sort.StringSlice(sorted))
+
+			for _, v2Name := range sorted {
+				if v2First {
+					v2First = false
+				} else {
+					out.RawByte(',')
+				}
+				easyMarshallOrder(out, v2Name, in.Orders[v2Name])
+			}
+			out.RawByte(']')
+		}
+	}
+	out.RawByte('}')
+}
+
+// easyMarshallOrder overwrites marshalling of a single order
+func easyMarshallOrder(out *jwriter.Writer, ticket string, in OrderType) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	if ticket != "" {
+		const prefix string = ",\"ticket\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(ticket))
+	}
+	if in.Symbol != "" {
+		const prefix string = ",\"symbol\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Symbol))
+	}
+	if in.TimeOpen != "" {
+		const prefix string = ",\"timeopen\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.TimeOpen))
+	}
+	if in.Type != "" {
+		const prefix string = ",\"type\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Type))
+	}
+	if in.InitVolume != "" {
+		const prefix string = ",\"initvolume\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.InitVolume))
+	}
+	if in.CurVolume != "" {
+		const prefix string = ",\"curvolume\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.CurVolume))
+	}
+	if in.PriceOpen != "" {
+		const prefix string = ",\"priceopen\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.PriceOpen))
+	}
+	if in.SL != "" {
+		const prefix string = ",\"sl\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.SL))
+	}
+	if in.TP != "" {
+		const prefix string = ",\"tp\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.TP))
+	}
+	if in.Swap != "" {
+		const prefix string = ",\"swap\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Swap))
+	}
+	if in.PriceSL != "" {
+		const prefix string = ",\"pricesl\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.PriceSL))
+	}
+	if in.Profit != "" {
+		const prefix string = ",\"profit\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Profit))
+	}
+	out.RawByte('}')
 }
 
 // func (e *Email) UnmarshalJSON(data []byte) error {

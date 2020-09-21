@@ -4,6 +4,7 @@ package data
 
 import (
 	json "encoding/json"
+
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
@@ -232,9 +233,9 @@ func easyjson8988be7EncodeMtliveData(out *jwriter.Writer, in TradesMsg) {
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v TradesMsg) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson8988be7EncodeMtliveData(w, v)
-}
+// func (v TradesMsg) MarshalEasyJSON(w *jwriter.Writer) {
+// 	easyjson8988be7EncodeMtliveData(w, v)
+// }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *TradesMsg) UnmarshalEasyJSON(l *jlexer.Lexer) {
