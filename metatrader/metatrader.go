@@ -1,9 +1,9 @@
-package data
+package metatrader
 
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"strconv"
 	"time"
 )
 
@@ -20,13 +20,13 @@ const (
 	orderTypeSellStopLimit int = 7
 )
 
-// TradesMsg keeps all Metatrader data for each particular client
+// Message keeps all Metatrader data for each particular client
 //easyjson:json
-type TradesMsg struct {
-	Page          string    `json:"-"`
-	ClientVersion string    `json:"-"`
-	Started       time.Time `json:"-"` // Connection established
-	Updated       time.Time `json:"-"` // Last time account was updated
+type Message struct {
+	Page          string    `json:"page,omitempty"`
+	ClientVersion string    `json:"clientversion,omitempty"`
+	Started       time.Time `json:"started,omitempty"` // Connection established
+	Updated       time.Time `json:"updated,omitempty"` // Last time account was updated
 	UpdateFreq    string    `json:"updatefreq,omitempty"`
 	Name          string    `json:"name,omitempty"`
 	Login         string    `json:"login,omitempty"`
@@ -38,13 +38,14 @@ type TradesMsg struct {
 	FreeMargin    string    `json:"freemargin,omitempty"`
 	MarginLevel   string    `json:"marginlevel,omitempty"`
 	ProfitTotal   string    `json:"profittotal,omitempty"`
+	OrdersCount   int       `json:"orderscount,omitempty"`
 	// Use Ticket as a map key
-	Orders map[string]OrderType `json:"orders"`
+	Orders map[string]Order `json:"orders,omitempty"`
 }
 
-// OrderType represent one Metatrader order
+// Order represent one Metatrader order
 // Tickets are always sent, other values sent only if not null AND changed since last update
-type OrderType struct {
+type Order struct {
 	Symbol     string `json:"symbol,omitempty"`
 	TimeOpen   string `json:"timeopen,omitempty"`
 	Type       string `json:"type,omitempty"`
@@ -64,22 +65,17 @@ type ResponseMsg struct {
 	Message string `json:"message,omitempty"`
 }
 
-// Validate incoming TradesMsg
-func (t *TradesMsg) Validate() error {
+// Validate incoming Message
+func (t *Message) Validate() error {
 	if err := validPage(t.Page); err != nil {
 		return err
 	}
 	if err := validString(t.ClientVersion, "ClientVersion"); err != nil {
 		return err
 	}
-	if err := validString(t.UpdateFreq, "UpdateFreq"); err != nil {
+	if err := validString(t.UpdateFreq, "UpdateFrequency"); err != nil {
 		return err
 	}
-	freq := strings.ToLower(t.UpdateFreq)
-	if freq != "second" && freq != "minute" {
-		return errors.New("Update frequency is not valid")
-	}
-
 	if err := validString(t.Name, "Name"); err != nil {
 		return err
 	}
@@ -110,11 +106,14 @@ func (t *TradesMsg) Validate() error {
 	if err := validNumber(t.ProfitTotal, "ProfitTotal"); err != nil {
 		return err
 	}
+	if len(t.Orders) > MaxFreeOrders {
+		return errors.New("Exceeded maximum orders number (" + strconv.Itoa(MaxFreeOrders) + ")")
+	}
 	for k, v := range t.Orders {
 		if err := validNumber(k, "Ticket"); err != nil {
 			return nil
 		}
-		if err := validNumber(v.Symbol, "Symbol"); err != nil {
+		if err := validString(v.Symbol, "Symbol"); err != nil {
 			return nil
 		}
 		if err := validTime(v.TimeOpen, "TimeOpen"); err != nil {
@@ -160,9 +159,10 @@ func validPage(bt string) error {
 	}
 
 	for _, b := range bt {
-		if (b < '0' || b > '9') && (b < 'a' || b > 'z') && (b != '_' && b != '-') {
-			return errors.New("'Page' may only contain lowercase latin letters, digits and following symbols '_-'")
+		if (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || b == '_' || b == '-' {
+			continue
 		}
+		return errors.New("'Page' may only contain lowercase latin letters, digits and following symbols '_-'")
 	}
 
 	return nil
@@ -174,11 +174,11 @@ func validString(bt string, fn string) error {
 	}
 
 	for _, b := range bt {
-		if (b < '0' || b > '9') && (b < 'a' || b > 'z') && (b < 'A' && b > 'Z') && (b != '_' && b != '-' && b != ' ' && b != '(' && b != ')' && b != '.' && b != ',') {
-			return errors.New("'" + fn + "' field may only contain latin letters, digits and following symbols '_- ().,'")
+		if (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || b == '-' || b == ' ' || b == '(' || b == ')' || b == '.' || b == ',' {
+			continue
 		}
+		return errors.New("'" + fn + "' field may only contain latin letters, digits and following symbols '_- ().,'")
 	}
-
 	return nil
 }
 
@@ -188,9 +188,10 @@ func validTime(bt string, fn string) error {
 	}
 
 	for _, b := range bt {
-		if (b < '0' || b > '9') && (b != ' ' && b != '.' && b != ',' && b != ':') {
-			return errors.New("'" + fn + "' field may only contain digits and following symbols ' .,:'")
+		if (b >= '0' && b <= '9') || b == ' ' || b == '.' || b == ',' || b == ':' {
+			continue
 		}
+		return errors.New("'" + fn + "' field may only contain digits and following symbols ' .,:'")
 	}
 
 	return nil
@@ -202,15 +203,16 @@ func validNumber(bt string, fn string) error {
 	}
 
 	for _, b := range bt {
-		if (b < '0' || b > '9') && (b != '.' && b != ',' && b != '-') {
-			return errors.New("'" + fn + "' field may only contain digits and following symbols '.,-'")
+		if (b >= '0' && b <= '9') || b == '.' || b == ',' || b == '-' {
+			continue
 		}
+		return errors.New("'" + fn + "' field may only contain digits and following symbols '.,-'")
 	}
 
 	return nil
 }
 
-func (t TradesMsg) String() string {
+func (t Message) String() string {
 	var ret string
 	ret += fmt.Sprintf("{\"Page\":\"%s\",", string(t.Page))
 	ret += fmt.Sprintf("\"ClientVersion\":\"%s\",", string(t.ClientVersion))
@@ -236,18 +238,56 @@ func (t TradesMsg) String() string {
 	return ret
 }
 
-func (t OrderType) String() string {
+// UpdateWith order a with data from order b
+func (a *Order) UpdateWith(b Order) {
+	if b.Symbol != "" {
+		a.Symbol = b.Symbol
+	}
+	if b.TimeOpen != "" {
+		a.TimeOpen = b.TimeOpen
+	}
+	if b.Type != "" {
+		a.Type = b.Type
+	}
+	if b.InitVolume != "" {
+		a.InitVolume = b.InitVolume
+	}
+	if b.CurVolume != "" {
+		a.CurVolume = b.CurVolume
+	}
+	if b.PriceOpen != "" {
+		a.PriceOpen = b.PriceOpen
+	}
+	if b.SL != "" {
+		a.SL = b.SL
+	}
+	if b.TP != "" {
+		a.TP = b.TP
+	}
+	if b.Swap != "" {
+		a.Swap = b.Swap
+	}
+	if b.PriceSL != "" {
+		a.PriceSL = b.PriceSL
+	}
+	if b.Profit != "" {
+		a.Profit = b.Profit
+	}
+}
+
+// String returns string representation
+func (a Order) String() string {
 	var ret string
-	ret += fmt.Sprintf("{\"Symbol\":\"%s\",", string(t.Symbol))
-	ret += fmt.Sprintf("\"TimeOpen\":\"%s\",", string(t.TimeOpen))
-	ret += fmt.Sprintf("\"Type\":\"%s\",", string(t.Type))
-	ret += fmt.Sprintf("\"InitVolume\":\"%s\",", string(t.InitVolume))
-	ret += fmt.Sprintf("\"CurVolume\":\"%s\",", string(t.CurVolume))
-	ret += fmt.Sprintf("\"PriceOpen\":\"%s\",", string(t.PriceOpen))
-	ret += fmt.Sprintf("\"SL\":\"%s\",", string(t.SL))
-	ret += fmt.Sprintf("\"TP\":\"%s\",", string(t.TP))
-	ret += fmt.Sprintf("\"Swap\":\"%s\",", string(t.Swap))
-	ret += fmt.Sprintf("\"PriceSL\":\"%s\",", string(t.PriceSL))
-	ret += fmt.Sprintf("\"Profit\":\"%s\"}", string(t.Profit))
+	ret += fmt.Sprintf("{\"Symbol\":\"%s\",", string(a.Symbol))
+	ret += fmt.Sprintf("\"TimeOpen\":\"%s\",", string(a.TimeOpen))
+	ret += fmt.Sprintf("\"Type\":\"%s\",", string(a.Type))
+	ret += fmt.Sprintf("\"InitVolume\":\"%s\",", string(a.InitVolume))
+	ret += fmt.Sprintf("\"CurVolume\":\"%s\",", string(a.CurVolume))
+	ret += fmt.Sprintf("\"PriceOpen\":\"%s\",", string(a.PriceOpen))
+	ret += fmt.Sprintf("\"SL\":\"%s\",", string(a.SL))
+	ret += fmt.Sprintf("\"TP\":\"%s\",", string(a.TP))
+	ret += fmt.Sprintf("\"Swap\":\"%s\",", string(a.Swap))
+	ret += fmt.Sprintf("\"PriceSL\":\"%s\",", string(a.PriceSL))
+	ret += fmt.Sprintf("\"Profit\":\"%s\"}", string(a.Profit))
 	return ret
 }
