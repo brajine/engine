@@ -8,6 +8,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const primaryMetatraderPort string = ":8181"
+
 func main() {
 	zaplog, err := zap.NewProduction()
 	if err != nil {
@@ -17,7 +19,7 @@ func main() {
 	log := zaplog.Sugar()
 
 	// TCP server on 8181 to listen MT clients
-	go metatrader.New(":8181", log).Run()
+	go metatrader.New(primaryMetatraderPort, log).Run()
 	log.Debug("MetaTrader listener is up and running on :8181")
 
 	// Running GO app as a service
