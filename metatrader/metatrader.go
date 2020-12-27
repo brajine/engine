@@ -30,7 +30,7 @@ type Message struct {
 	FreeMargin    string    `json:"freemargin,omitempty" example:"1000.0"`
 	MarginLevel   string    `json:"marginlevel,omitempty" example:"100.0"`
 	ProfitTotal   string    `json:"profittotal,omitempty" example:"0.0"`
-	OrdersCount   int       `json:"orderscount,omitempty" example:"1"`
+	OrdersCount   int       `json:"orderscount,omitempty" example:"3"`
 	// Ticket is used as Order key
 	Orders map[OrderTicket]Order `json:"orders,omitempty"`
 }
