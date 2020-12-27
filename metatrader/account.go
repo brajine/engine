@@ -22,7 +22,7 @@ func NewAccount(msg *Message) *Account {
 	acc.Started = time.Now()
 	acc.UpdateFreq = msg.UpdateFreq
 	acc.ClientVersion = msg.ClientVersion
-	acc.Orders = make(map[string]Order)
+	acc.Orders = make(map[OrderTicket]Order)
 	acc.update(msg)
 	return acc
 }

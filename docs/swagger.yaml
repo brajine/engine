@@ -1,0 +1,189 @@
+basePath: /api
+definitions:
+  metatrader.Account:
+    properties:
+      balance:
+        example: "1000.00"
+        type: string
+      clientversion:
+        example: "1.0"
+        type: string
+      company:
+        example: My own company
+        type: string
+      equity:
+        example: "1000.0"
+        type: string
+      freemargin:
+        example: "1000.0"
+        type: string
+      login:
+        example: "010203"
+        type: string
+      margin:
+        example: "1000.0"
+        type: string
+      marginlevel:
+        example: "100.0"
+        type: string
+      name:
+        example: Alexandre Dumas
+        type: string
+      orders:
+        additionalProperties:
+          $ref: '#/definitions/metatrader.Order'
+        description: Ticket is used as Order key
+        type: object
+      orderscount:
+        example: 1
+        type: integer
+      page:
+        example: my-test-page
+        type: string
+      profittotal:
+        example: "0.0"
+        type: string
+      server:
+        example: Metatrader test server
+        type: string
+      started:
+        example: "2020-12-20 23:10:01"
+        type: string
+      updated:
+        example: "2020-12-20 23:10:01"
+        type: string
+      updatefreq:
+        example: minute
+        type: string
+    type: object
+  metatrader.Order:
+    properties:
+      curvolume:
+        example: "0.1"
+        type: string
+      initvolume:
+        example: "0.1"
+        type: string
+      priceopen:
+        example: "1.13234"
+        type: string
+      pricesl:
+        example: "0.0"
+        type: string
+      profit:
+        example: "-10.23"
+        type: string
+      sl:
+        example: "0.0"
+        type: string
+      swap:
+        example: "0.1"
+        type: string
+      symbol:
+        example: EURUSD
+        type: string
+      timeopen:
+        example: "2020-12-20 23:10:01"
+        type: string
+      tp:
+        example: "0.0"
+        type: string
+      type:
+        example: OP_BUY
+        type: string
+    type: object
+  metatrader.StateData:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/metatrader.StateEntry'
+        type: array
+      online:
+        example: 5
+        type: integer
+    type: object
+  metatrader.StateEntry:
+    properties:
+      page:
+        example: my-test-page
+        type: string
+      started:
+        example: "2020-12-20 23:10:01"
+        type: string
+      updateFreq:
+        example: minute
+        type: string
+    type: object
+host: metatrader.live
+info:
+  contact: {}
+  description: Swagger API doc for Metatrader.live.
+  license:
+    name: MIT License
+    url: https://github.com/brajine/metatrader-live/blob/master/LICENSE
+  title: Metatrader.live API
+  version: "1.0"
+paths:
+  /api/stats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/metatrader.StateData'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Provide actual list of connected accounts
+  /rest/{page}:
+    get:
+      parameters:
+      - description: Account Page name
+        in: path
+        name: page
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/metatrader.Account'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Provide actual data on connected account
+  /wss/{page}:
+    get:
+      parameters:
+      - description: Account Page name
+        in: path
+        name: page
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/metatrader.Account'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Provide actual data on connected account via WebSocket connection
+swagger: "2.0"

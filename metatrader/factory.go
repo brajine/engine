@@ -29,19 +29,6 @@ type Factory struct {
 	sync.RWMutex
 }
 
-// StateEntry used to
-type StateEntry struct {
-	Page       string `json:"page"`
-	Started    string `json:"started"`
-	UpdateFreq string `json:"updateFreq"`
-}
-
-// StateData used to export state information through /api/state
-type StateData struct {
-	Online   int          `json:"online"`
-	Accounts []StateEntry `json:"accounts"`
-}
-
 // New create Metatrader factory
 func New(addr string, log *zap.SugaredLogger) *Factory {
 	return &Factory{
@@ -76,7 +63,7 @@ func (f *Factory) Run() {
 
 // Handle MetaTrader connection
 func (f *Factory) Handle(conn net.Conn) {
-	f.log.Debug("Accepted connection from", conn.RemoteAddr())
+	f.log.Info("Accepted connection from", conn.RemoteAddr())
 
 	dec := gob.NewDecoder(conn)
 	enc := gob.NewEncoder(conn)
@@ -89,7 +76,7 @@ func (f *Factory) Handle(conn net.Conn) {
 // ProcessMessages from metatrader connection
 func (f *Factory) ProcessMessages(enc *gob.Encoder, dec *gob.Decoder, logaddr string) {
 	defer func() {
-		f.log.Debug("Connection is closed (", logaddr, ")")
+		f.log.Info("Connection is closed (", logaddr, ")")
 	}()
 
 	// Messaging loop
@@ -126,7 +113,7 @@ func (f *Factory) ProcessMessages(enc *gob.Encoder, dec *gob.Decoder, logaddr st
 		acc = f.createAccount(msg)
 		defer func() {
 			f.removeAccount(page)
-			f.log.Debug("Account disconnected: " + page + "")
+			f.log.Info("Account disconnected: " + page + "")
 		}()
 
 		f.writeOkMessage(enc, "New account registered: "+page+"")
@@ -139,11 +126,11 @@ func (f *Factory) firstMessageCheck(msg *Message) error {
 		return errors.New("Page address is not provided")
 	}
 	if f.PageExist(msg.Page) != nil {
-		return errors.New("Page address is already in use")
+		return errors.New("Page address " + msg.Page + " is already in use")
 	}
 	freq := strings.ToLower(msg.UpdateFreq)
 	if freq != "second" && freq != "minute" {
-		return errors.New("Update frequency is not valid")
+		return errors.New("Update frequency " + freq + " is not valid")
 	}
 	return nil
 }
@@ -212,7 +199,7 @@ func (f *Factory) writeErrorMessage(enc *gob.Encoder, addr, page, text string) {
 
 func (f *Factory) writeOkMessage(enc *gob.Encoder, str string) error {
 	if str != "" {
-		f.log.Debug(str)
+		f.log.Info(str)
 	}
 	return enc.Encode(ResponseMsg{})
 }

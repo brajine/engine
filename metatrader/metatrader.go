@@ -9,60 +9,52 @@ import (
 
 // easyjson -no_std_marshalers data/metatrader.go
 
-const (
-	orderTypeBuy           int = 0
-	orderTypeSell          int = 1
-	orderTypeBuyLimit      int = 2
-	orderTypeSellLimit     int = 3
-	orderTypeBuyStop       int = 4
-	orderTypeSellStop      int = 5
-	orderTypeBuyStopLimit  int = 6
-	orderTypeSellStopLimit int = 7
-)
+// OrderTicket as a map key
+type OrderTicket string
 
 // Message keeps all Metatrader data for each particular client
 //easyjson:json
 type Message struct {
-	Page          string    `json:"page,omitempty"`
-	ClientVersion string    `json:"clientversion,omitempty"`
-	Started       time.Time `json:"started,omitempty"` // Connection established
-	Updated       time.Time `json:"updated,omitempty"` // Last time account was updated
-	UpdateFreq    string    `json:"updatefreq,omitempty"`
-	Name          string    `json:"name,omitempty"`
-	Login         string    `json:"login,omitempty"`
-	Server        string    `json:"server,omitempty"`
-	Company       string    `json:"company,omitempty"`
-	Balance       string    `json:"balance,omitempty"`
-	Equity        string    `json:"equity,omitempty"`
-	Margin        string    `json:"margin,omitempty"`
-	FreeMargin    string    `json:"freemargin,omitempty"`
-	MarginLevel   string    `json:"marginlevel,omitempty"`
-	ProfitTotal   string    `json:"profittotal,omitempty"`
-	OrdersCount   int       `json:"orderscount,omitempty"`
-	// Use Ticket as a map key
-	Orders map[string]Order `json:"orders,omitempty"`
+	Page          string    `json:"page,omitempty" example:"my-test-page"`
+	ClientVersion string    `json:"clientversion,omitempty" example:"1.0"`
+	Started       time.Time `json:"started,omitempty" example:"2020-12-20 23:10:01"`
+	Updated       time.Time `json:"updated,omitempty" example:"2020-12-20 23:10:01"`
+	UpdateFreq    string    `json:"updatefreq,omitempty" example:"minute"`
+	Name          string    `json:"name,omitempty" example:"Alexandre Dumas"`
+	Login         string    `json:"login,omitempty" example:"010203"`
+	Server        string    `json:"server,omitempty" example:"Metatrader test server"`
+	Company       string    `json:"company,omitempty" example:"My own company"`
+	Balance       string    `json:"balance,omitempty" example:"1000.00"`
+	Equity        string    `json:"equity,omitempty" example:"1000.0"`
+	Margin        string    `json:"margin,omitempty" example:"1000.0"`
+	FreeMargin    string    `json:"freemargin,omitempty" example:"1000.0"`
+	MarginLevel   string    `json:"marginlevel,omitempty" example:"100.0"`
+	ProfitTotal   string    `json:"profittotal,omitempty" example:"0.0"`
+	OrdersCount   int       `json:"orderscount,omitempty" example:"1"`
+	// Ticket is used as Order key
+	Orders map[OrderTicket]Order `json:"orders,omitempty"`
 }
 
 // Order represent one Metatrader order
 // Tickets are always sent, other values sent only if not null AND changed since last update
 type Order struct {
-	Symbol     string `json:"symbol,omitempty"`
-	TimeOpen   string `json:"timeopen,omitempty"`
-	Type       string `json:"type,omitempty"`
-	InitVolume string `json:"initvolume,omitempty"`
-	CurVolume  string `json:"curvolume,omitempty"`
-	PriceOpen  string `json:"priceopen,omitempty"`
-	SL         string `json:"sl,omitempty"`
-	TP         string `json:"tp,omitempty"`
-	Swap       string `json:"swap,omitempty"`
-	PriceSL    string `json:"pricesl,omitempty"`
-	Profit     string `json:"profit,omitempty"`
+	Symbol     string `json:"symbol,omitempty" example:"EURUSD"`
+	TimeOpen   string `json:"timeopen,omitempty" example:"2020-12-20 23:10:01"`
+	Type       string `json:"type,omitempty" example:"OP_BUY"`
+	InitVolume string `json:"initvolume,omitempty" example:"0.1"`
+	CurVolume  string `json:"curvolume,omitempty" example:"0.1"`
+	PriceOpen  string `json:"priceopen,omitempty" example:"1.13234"`
+	SL         string `json:"sl,omitempty" example:"0.0"`
+	TP         string `json:"tp,omitempty" example:"0.0"`
+	Swap       string `json:"swap,omitempty" example:"0.1"`
+	PriceSL    string `json:"pricesl,omitempty" example:"0.0"`
+	Profit     string `json:"profit,omitempty" example:"-10.23"`
 }
 
 // ResponseMsg is sending to MetaTrader
 type ResponseMsg struct {
-	Error   string `json:"error,omitempty"`
-	Message string `json:"message,omitempty"`
+	Error   string `json:"error,omitempty" example:"Exceeded maximum orders number"`
+	Message string `json:"message,omitempty" example:"New API version is available"`
 }
 
 // Validate incoming Message
@@ -110,7 +102,7 @@ func (t *Message) Validate() error {
 		return errors.New("Exceeded maximum orders number (" + strconv.Itoa(MaxFreeOrders) + ")")
 	}
 	for k, v := range t.Orders {
-		if err := validNumber(k, "Ticket"); err != nil {
+		if err := validNumber(string(k), "Ticket"); err != nil {
 			return nil
 		}
 		if err := validString(v.Symbol, "Symbol"); err != nil {
@@ -198,8 +190,8 @@ func validTime(bt string, fn string) error {
 }
 
 func validNumber(bt string, fn string) error {
-	if len(bt) > 10 {
-		return errors.New("'" + fn + "' field is limited to 10 characters")
+	if len(bt) > 32 {
+		return errors.New("'" + fn + "' field is limited to 32 characters")
 	}
 
 	for _, b := range bt {
