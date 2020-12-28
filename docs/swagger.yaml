@@ -35,7 +35,7 @@ definitions:
         description: Ticket is used as Order key
         type: object
       orderscount:
-        example: 1
+        example: 3
         type: integer
       page:
         example: my-test-page
@@ -99,7 +99,7 @@ definitions:
           $ref: '#/definitions/metatrader.StateEntry'
         type: array
       online:
-        example: 5
+        example: 1
         type: integer
     type: object
   metatrader.StateEntry:

@@ -63,7 +63,7 @@ func (f *Factory) Run() {
 
 // Handle MetaTrader connection
 func (f *Factory) Handle(conn net.Conn) {
-	f.log.Info("Accepted connection from", conn.RemoteAddr())
+	f.log.Info("Accepted connection from ", conn.RemoteAddr())
 
 	dec := gob.NewDecoder(conn)
 	enc := gob.NewEncoder(conn)

@@ -19,6 +19,9 @@ var (
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
 	}
 )
 
@@ -31,7 +34,7 @@ type StateEntry struct {
 
 // StateData used to export state information through /api/state
 type StateData struct {
-	Online   int          `json:"online" example:"5"`
+	Online   int          `json:"online" example:"1"`
 	Accounts []StateEntry `json:"accounts"`
 }
 

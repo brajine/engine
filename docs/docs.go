@@ -174,7 +174,7 @@ var doc = `{
                 },
                 "orderscount": {
                     "type": "integer",
-                    "example": 1
+                    "example": 3
                 },
                 "page": {
                     "type": "string",
@@ -262,7 +262,7 @@ var doc = `{
                 },
                 "online": {
                     "type": "integer",
-                    "example": 5
+                    "example": 1
                 }
             }
         },
