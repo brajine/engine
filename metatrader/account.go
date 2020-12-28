@@ -19,7 +19,7 @@ func NewAccount(msg *Message) *Account {
 	acc := new(Account) // Promoted fields may not initialized in list
 	acc.viewers = make(map[*websocket.Conn]bool)
 	acc.Page = msg.Page
-	acc.Started = time.Now()
+	acc.Started = OrderTime(time.Now())
 	acc.UpdateFreq = msg.UpdateFreq
 	acc.ClientVersion = msg.ClientVersion
 	acc.Orders = make(map[OrderTicket]Order)
@@ -41,7 +41,7 @@ func (a *Account) close() {
 func (a *Account) update(upd *Message) {
 	// Update Account data
 	a.updateInfo(upd)
-	a.Updated = time.Now()
+	a.Updated = OrderTime(time.Now())
 
 	// Remove closed orders
 	// Metatrader sends entire ticket array in every message

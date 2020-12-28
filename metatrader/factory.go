@@ -9,6 +9,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -161,10 +162,10 @@ func (f *Factory) exportState() *StateData {
 
 	st := StateData{Online: len(f.accounts)}
 	for _, acc := range f.accounts {
-		started := acc.Started.Format("2006-01-02 15:04:05")
+		started := time.Time(acc.Started)
 		entry := StateEntry{
 			Page:       acc.Page,
-			Started:    started,
+			Started:    started.Format("2006-01-02 15:04:05"),
 			UpdateFreq: acc.UpdateFreq,
 		}
 		st.Accounts = append(st.Accounts, entry)

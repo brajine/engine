@@ -12,13 +12,16 @@ import (
 // OrderTicket as a map key
 type OrderTicket string
 
+// OrderTime is to serialize Time correctly
+type OrderTime time.Time
+
 // Message keeps all Metatrader data for each particular client
 //easyjson:json
 type Message struct {
 	Page          string    `json:"page,omitempty" example:"my-test-page"`
 	ClientVersion string    `json:"clientversion,omitempty" example:"1.0"`
-	Started       time.Time `json:"started,omitempty" example:"2020-12-20 23:10:01"`
-	Updated       time.Time `json:"updated,omitempty" example:"2020-12-20 23:10:01"`
+	Started       OrderTime `json:"started,omitempty" example:"2020-12-20 23:10:01"`
+	Updated       OrderTime `json:"updated,omitempty" example:"2020-12-20 23:10:01"`
 	UpdateFreq    string    `json:"updatefreq,omitempty" example:"minute"`
 	Name          string    `json:"name,omitempty" example:"Alexandre Dumas"`
 	Login         string    `json:"login,omitempty" example:"010203"`
@@ -55,6 +58,12 @@ type Order struct {
 type ResponseMsg struct {
 	Error   string `json:"error,omitempty" example:"Exceeded maximum orders number"`
 	Message string `json:"message,omitempty" example:"New API version is available"`
+}
+
+// MarshalJSON ...
+func (t OrderTime) MarshalJSON() ([]byte, error) {
+	stamp := fmt.Sprintf("\"%s\"", time.Time(t).Format("2006-01-02 15:04:05"))
+	return []byte(stamp), nil
 }
 
 // Validate incoming Message
