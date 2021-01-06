@@ -5,21 +5,22 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 // Account represent connected MetaTrader Client
-// viewers keep WebSocket clients array
+// broker keep WebSocket clients array
 type Account struct {
 	Message
-	viewers map[*websocket.Conn]bool
+	broker *BrokerFactory
 }
 
 // NewAccount ...
-func NewAccount(msg *Message) *Account {
+func NewAccount(msg *Message, log *zap.SugaredLogger) *Account {
 	acc := new(Account) // Promoted fields may not initialized in list
-	acc.viewers = make(map[*websocket.Conn]bool)
+	acc.broker = NewBroker(log)
 	acc.Page = msg.Page
-	acc.Started = OrderTime(time.Now())
+	acc.Started = time.Now()
 	acc.UpdateFreq = msg.UpdateFreq
 	acc.ClientVersion = msg.ClientVersion
 	acc.Orders = make(map[OrderTicket]Order)
@@ -29,19 +30,15 @@ func NewAccount(msg *Message) *Account {
 
 // close all viewers and destroy account
 func (a *Account) close() {
-	// Close all WebSocket clients
-	for v := range a.viewers {
-		v.Close()
-	}
-	a.viewers = nil
 	a.Orders = nil
+	a.broker.Stop()
 }
 
 // Update update existing MT Client account with new data
 func (a *Account) update(upd *Message) {
 	// Update Account data
 	a.updateInfo(upd)
-	a.Updated = OrderTime(time.Now())
+	a.Updated = time.Now()
 
 	// Remove closed orders
 	// Metatrader sends entire ticket array in every message
@@ -125,40 +122,23 @@ func (a *Account) ToJSON() ([]byte, error) {
 
 // AddViewer add new Websocket.Conn to the page viewers pool
 // Also send him Update message
-func (a *Account) AddViewer(viewer *websocket.Conn) error {
-	msg, err := a.ToJSON()
-	if err != nil {
-		return err
-	}
-	err = viewer.WriteMessage(websocket.TextMessage, msg)
-	if err == nil {
-		a.viewers[viewer] = true
-	}
-	return nil
+func (a *Account) AddViewer(viewer *websocket.Conn) {
+	a.broker.AddViewer(viewer)
 }
 
 // RemoveViewer removes a connection from page vewers pool
 func (a *Account) RemoveViewer(viewer *websocket.Conn) {
-	viewer.Close()
-	delete(a.viewers, viewer)
+	a.broker.RemoveViewer(viewer)
 }
 
-// BCastUpdate send update message to all page vewers
-func (a *Account) bcastUpdate() {
-	msg, err := a.ToJSON()
-	if err == nil && msg != nil {
-		for viewer := range a.viewers {
-			if err := viewer.WriteMessage(websocket.TextMessage, msg); err != nil {
-				a.RemoveViewer(viewer)
-			}
-		}
-	}
+// SendUpdateToViewer ...
+func (a *Account) SendUpdateToViewer(viewer *websocket.Conn) {
+	msg, _ := a.ToJSON()
+	a.broker.SendMessageToViewer(viewer, msg)
 }
 
-// Return timeout in time.Duration
-func (a *Account) getTimeout() time.Duration {
-	if a.UpdateFreq == "second" {
-		return time.Second
-	}
-	return time.Minute
+// SendUpdateToAllViewers ...
+func (a *Account) SendUpdateToAllViewers() {
+	msg, _ := a.ToJSON()
+	a.broker.SendMessage(msg)
 }

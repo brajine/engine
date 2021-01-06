@@ -30,8 +30,8 @@ type Factory struct {
 	sync.RWMutex
 }
 
-// New create Metatrader factory
-func New(addr string, log *zap.SugaredLogger) *Factory {
+// NewFactory create Metatrader factory
+func NewFactory(addr string, log *zap.SugaredLogger) *Factory {
 	return &Factory{
 		log:      log,
 		addr:     addr,
@@ -100,7 +100,7 @@ func (f *Factory) ProcessMessages(enc *gob.Encoder, dec *gob.Decoder, logaddr st
 		// All Subsequent messages except first one
 		if page != "" {
 			acc.update(msg)
-			acc.bcastUpdate()
+			acc.SendUpdateToAllViewers()
 			f.writeOkMessage(enc, "")
 			continue
 		}
@@ -137,7 +137,7 @@ func (f *Factory) firstMessageCheck(msg *Message) error {
 }
 
 func (f *Factory) createAccount(msg *Message) *Account {
-	acc := NewAccount(msg)
+	acc := NewAccount(msg, f.log)
 	f.Lock()
 	f.accounts[msg.Page] = acc
 	f.Unlock()

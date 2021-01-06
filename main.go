@@ -28,7 +28,7 @@ func main() {
 	log := zaplog.Sugar()
 
 	// TCP server on 8181 to listen MT clients
-	go metatrader.New(primaryMetatraderPort, log).Run()
+	go metatrader.NewFactory(primaryMetatraderPort, log).Run()
 	log.Info("MetaTrader listener is up and running on :8181")
 
 	// Running GO app as a service

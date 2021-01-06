@@ -43,10 +43,11 @@ func (f *Factory) startAPIServer(addr string) {
 	// HTTP server to serve JSON data
 	e := echo.New()
 	e.GET("/api/stats", f.StatsAPIHandler)
+	e.HEAD("/api/stats", f.StatsAPIHandler)
 	e.GET("/api/rest/:page", f.RestAPIHandler)
 	e.GET("/api/wss/:page", f.WssAPIHandler)
-	e.GET("/swagger/*", echoSwagger.WrapHandler)
-	// e.Use(middleware.Logger())
+	e.GET("/swagger/*", echoSwagger.WrapHandler) // including images etc
+	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	f.log.Fatal(e.Start(addr).Error())
 }
@@ -106,5 +107,6 @@ func (f *Factory) WssAPIHandler(c echo.Context) error {
 
 	// Add new connection to page viewers pool, and send him update
 	acc.AddViewer(ws)
+	acc.SendUpdateToViewer(ws)
 	return nil
 }

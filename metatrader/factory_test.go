@@ -1,8 +1,7 @@
-package main
+package metatrader
 
 import (
 	"encoding/gob"
-	"engine/metatrader"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -16,7 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -27,7 +26,7 @@ const TestTimeoutSeconds time.Duration = 3 * time.Second
 
 type engineTestSuite struct {
 	suite.Suite
-	mt             *metatrader.Factory
+	mt             *Factory
 	enc            *gob.Encoder
 	dec            *gob.Decoder
 	server, client net.Conn
@@ -47,7 +46,7 @@ func (e *engineTestSuite) SetupTest() {
 	e.zapRecorder = recorder
 	e.zapObserver = zap.New(core)
 
-	e.mt = metatrader.New("", e.zapObserver.Sugar())
+	e.mt = NewFactory("", e.zapObserver.Sugar())
 
 	e.server, e.client = net.Pipe() // Emulate server connection
 	enc := gob.NewEncoder(e.server)
@@ -86,7 +85,7 @@ func (e *engineTestSuite) TearDownTest() {
 
 func (e *engineTestSuite) TestRegister() {
 	println("TestRegister started")
-	msg := metatrader.Message{
+	msg := Message{
 		Page:          "test",
 		ClientVersion: "0.1",
 		UpdateFreq:    "second",
@@ -100,9 +99,9 @@ func (e *engineTestSuite) TestRegister() {
 		FreeMargin:    "0.1",
 		MarginLevel:   "1000",
 		ProfitTotal:   "1000",
-		Orders:        make(map[string]metatrader.Order),
+		Orders:        make(map[OrderTicket]Order),
 	}
-	ord := metatrader.Order{
+	ord := Order{
 		Symbol:     "EURGBP",
 		TimeOpen:   "2020.12.25 10:08:23",
 		Type:       "1",
@@ -139,7 +138,7 @@ func (e *engineTestSuite) TestRegister() {
 		e.Equal("1000", acc.MarginLevel)
 		e.Equal("1000", acc.ProfitTotal)
 	}
-	if e.Contains(acc.Orders, "11111") {
+	if e.Contains(acc.Orders, OrderTicket("11111")) {
 		ord := acc.Orders["11111"]
 		e.Equal("EURGBP", ord.Symbol)
 		e.Equal("2020.12.25 10:08:23", ord.TimeOpen)
@@ -159,7 +158,7 @@ func (e *engineTestSuite) TestPageExists() {
 	println("TestPageExists started")
 
 	// Register an account
-	err := e.Send(&metatrader.Message{
+	err := e.Send(&Message{
 		Page:       "test",
 		UpdateFreq: "second",
 	})
@@ -172,41 +171,21 @@ func (e *engineTestSuite) TestPageExists() {
 	}
 
 	// Repeat from another connection
-	done := make(chan bool)
-	go func() {
-		defer func() {
-			done <- true
-		}()
-		server, client := net.Pipe()
-		enc := gob.NewEncoder(server)
-		dec := gob.NewDecoder(server)
-		go e.mt.ProcessMessages(enc, dec, "testconn")
-
-		enc2 := gob.NewEncoder(client)
-		dec2 := gob.NewDecoder(client)
-
-		err = enc2.Encode(metatrader.Message{
-			Page:          "test",
-			ClientVersion: "0.1",
-			UpdateFreq:    "second",
-		})
-		e.Nil(err)
-
-		// Wait for confirmation!
-		resp := new(metatrader.ResponseMsg)
-		err := dec2.Decode(&resp)
-		if e.NoError(err) {
-			e.NotEmpty(resp.Error)
-		}
-	}()
-	<-done
+	resp, err = e.PushToNewInstance(&Message{
+		Page:          "test",
+		ClientVersion: "0.1",
+		UpdateFreq:    "second",
+	})
+	if e.NoError(err) {
+		e.NotEmpty(resp.Error)
+	}
 }
 
 func (e *engineTestSuite) TestAccountUpdate() {
 	println("TestAccountUpdate started")
 
 	// Register
-	msg := metatrader.Message{
+	msg := Message{
 		Page:          "test",
 		ClientVersion: "0.1",
 		UpdateFreq:    "second",
@@ -237,7 +216,7 @@ func (e *engineTestSuite) TestAccountUpdate() {
 	}
 
 	// Update
-	msg = metatrader.Message{
+	msg = Message{
 		Page:          "updated",
 		ClientVersion: "0.2",
 		UpdateFreq:    "minute",
@@ -283,12 +262,12 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 	println("TestOrdersUpdate started")
 
 	// Register with 2 orders
-	msg := metatrader.Message{
+	msg := Message{
 		Page:       "test",
 		UpdateFreq: "second",
-		Orders:     make(map[string]metatrader.Order),
+		Orders:     make(map[OrderTicket]Order),
 	}
-	ord1 := metatrader.Order{
+	ord1 := Order{
 		Symbol:     "EURGBP",
 		TimeOpen:   "1111.11.11 11:11:11",
 		Type:       "1",
@@ -301,7 +280,7 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 		PriceSL:    "1",
 		Profit:     "1",
 	}
-	ord2 := metatrader.Order{
+	ord2 := Order{
 		Symbol:     "GBPUSD",
 		TimeOpen:   "2222.22.22 22:22:22",
 		Type:       "2",
@@ -326,7 +305,7 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 	acc := e.mt.PageExist("test")
 	if e.NotNil(acc) {
 		e.Equal(2, len(acc.Orders))
-		if e.Contains(acc.Orders, "11111") {
+		if e.Contains(acc.Orders, OrderTicket("11111")) {
 			ord := acc.Orders["11111"]
 			e.Equal("EURGBP", ord.Symbol)
 			e.Equal("1111.11.11 11:11:11", ord.TimeOpen)
@@ -340,7 +319,7 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 			e.Equal("1", ord.PriceSL)
 			e.Equal("1", ord.Profit)
 		}
-		if e.Contains(acc.Orders, "22222") {
+		if e.Contains(acc.Orders, OrderTicket("22222")) {
 			ord := acc.Orders["22222"]
 			e.Equal("GBPUSD", ord.Symbol)
 			e.Equal("2222.22.22 22:22:22", ord.TimeOpen)
@@ -357,12 +336,12 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 	}
 
 	// Update with only 1 modified order (this will remove the first one)
-	msg = metatrader.Message{
+	msg = Message{
 		Page:       "test",
 		UpdateFreq: "second",
-		Orders:     make(map[string]metatrader.Order),
+		Orders:     make(map[OrderTicket]Order),
 	}
-	ord2 = metatrader.Order{
+	ord2 = Order{
 		Symbol:     "GBPJPY",
 		TimeOpen:   "3333.33.33 33:33:33",
 		Type:       "3",
@@ -386,7 +365,7 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 	acc = e.mt.PageExist("test")
 	if e.NotNil(acc) {
 		e.Equal(1, len(acc.Orders))
-		if e.Contains(acc.Orders, "22222") {
+		if e.Contains(acc.Orders, OrderTicket("22222")) {
 			ord := acc.Orders["22222"]
 			e.Equal("GBPJPY", ord.Symbol)
 			e.Equal("3333.33.33 33:33:33", ord.TimeOpen)
@@ -403,13 +382,13 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 	}
 
 	// Update with new order (this will remove the previous)
-	msg = metatrader.Message{
+	msg = Message{
 		Page:          "test",
 		ClientVersion: "0.1",
 		UpdateFreq:    "second",
-		Orders:        make(map[string]metatrader.Order),
+		Orders:        make(map[OrderTicket]Order),
 	}
-	ord3 := metatrader.Order{
+	ord3 := Order{
 		Symbol: "GBPJPY",
 	}
 	msg.Orders["33333"] = ord3
@@ -423,7 +402,7 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 	acc = e.mt.PageExist("test")
 	if e.NotNil(acc) {
 		e.Equal(1, len(acc.Orders))
-		if e.Contains(acc.Orders, "33333") {
+		if e.Contains(acc.Orders, OrderTicket("33333")) {
 			ord := acc.Orders["33333"]
 			e.Equal("GBPJPY", ord.Symbol)
 			e.Empty(ord.TimeOpen)
@@ -444,37 +423,37 @@ func (e *engineTestSuite) TestOrdersUpdate() {
 func (e *engineTestSuite) TestValidateAccountFailed() {
 	println("TestValidateAccountFailed started")
 
-	var fails []*metatrader.Message
-	fails = append(fails, &metatrader.Message{})
-	fails = append(fails, &metatrader.Message{Page: "'Page' may only contain lowercase latin letters, digits and following symbols '_-'"})
-	fails = append(fails, &metatrader.Message{Page: "Page_may_only_contain_lowercase_latin_letters_digits_and_following_symbols"})
-	fails = append(fails, &metatrader.Message{Page: "Page may only contain"})
-	fails = append(fails, &metatrader.Message{Page: "%page&"})
-	fails = append(fails, &metatrader.Message{Page: "Page"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "Simple update frequency"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "Hour"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", ClientVersion: "Version is a string so it is limited to 32 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", ClientVersion: "%%"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Name: "Simple name that is longer than 32 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Name: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Login: "Simple login that is longer than 32 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Login: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Server: "Simple server that is longer than 32 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Server: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Company: "Simple company that is longer than 32 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Company: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Balance: "Field is limited to 10 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Balance: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Equity: "Field is limited to 10 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Equity: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Margin: "Field is limited to 10 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", Margin: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", FreeMargin: "Field is limited to 10 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", FreeMargin: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", MarginLevel: "Field is limited to 10 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", MarginLevel: "$$"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", ProfitTotal: "Field is limited to 10 characters"})
-	fails = append(fails, &metatrader.Message{Page: "page", UpdateFreq: "second", ProfitTotal: "$$"})
+	var fails []*Message
+	fails = append(fails, &Message{})
+	fails = append(fails, &Message{Page: "'Page' may only contain lowercase latin letters, digits and following symbols '_-'"})
+	fails = append(fails, &Message{Page: "Page_may_only_contain_lowercase_latin_letters_digits_and_following_symbols"})
+	fails = append(fails, &Message{Page: "Page may only contain"})
+	fails = append(fails, &Message{Page: "%page&"})
+	fails = append(fails, &Message{Page: "Page"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "Simple update frequency"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "Hour"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", ClientVersion: "Version is a string so it is limited to 32 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", ClientVersion: "%%"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Name: "Simple name that is longer than 32 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Name: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Login: "Simple login that is longer than 32 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Login: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Server: "Simple server that is longer than 32 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Server: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Company: "Simple company that is longer than 32 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Company: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Balance: "Field is limited to 10 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Balance: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Equity: "Field is limited to 10 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Equity: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Margin: "Field is limited to 10 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", Margin: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", FreeMargin: "Field is limited to 10 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", FreeMargin: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", MarginLevel: "Field is limited to 10 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", MarginLevel: "$$"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", ProfitTotal: "Field is limited to 10 characters"})
+	fails = append(fails, &Message{Page: "page", UpdateFreq: "second", ProfitTotal: "$$"})
 
 	for _, v := range fails {
 		resp, err := e.PushToNewInstance(v)
@@ -489,14 +468,14 @@ func (e *engineTestSuite) TestValidateAccountFailed() {
 
 func (e *engineTestSuite) TestMaxFreeOrders() {
 	println("TestMaxFreeOrders started")
-	msg := metatrader.Message{
+	msg := Message{
 		Page:       "test",
 		UpdateFreq: "second",
-		Orders:     make(map[string]metatrader.Order),
+		Orders:     make(map[OrderTicket]Order),
 	}
 
-	for i := 0; i < metatrader.MaxFreeOrders; i++ {
-		msg.Orders[strconv.Itoa(i)] = metatrader.Order{}
+	for i := 0; i < MaxFreeOrders; i++ {
+		msg.Orders[OrderTicket(strconv.Itoa(i))] = Order{}
 	}
 
 	resp, err := e.Push(&msg)
@@ -505,7 +484,7 @@ func (e *engineTestSuite) TestMaxFreeOrders() {
 	}
 
 	// Add extra one order
-	msg.Orders[strconv.Itoa(metatrader.MaxFreeOrders)] = metatrader.Order{}
+	msg.Orders[OrderTicket(strconv.Itoa(MaxFreeOrders))] = Order{}
 
 	resp, err = e.Push(&msg)
 	if e.NoError(err) {
@@ -517,7 +496,7 @@ func (e *engineTestSuite) TestStatsAPIHandler() {
 	println("TestStatsAPIHandler started")
 
 	// Push 2 accounts
-	resp, err := e.Push(&metatrader.Message{
+	resp, err := e.Push(&Message{
 		Page:       "test",
 		UpdateFreq: "second",
 	})
@@ -525,7 +504,7 @@ func (e *engineTestSuite) TestStatsAPIHandler() {
 		e.Empty(resp.Error)
 	}
 
-	resp, err = e.PushToNewInstance(&metatrader.Message{
+	resp, err = e.PushToNewInstance(&Message{
 		Page:       "test2",
 		UpdateFreq: "second",
 	})
@@ -547,7 +526,7 @@ func (e *engineTestSuite) TestRestAPIHandler() {
 	println("TestRestAPIHandler started")
 
 	// Push account
-	msg := metatrader.Message{
+	msg := Message{
 		Page:          "test",
 		ClientVersion: "0.1",
 		UpdateFreq:    "second",
@@ -561,9 +540,9 @@ func (e *engineTestSuite) TestRestAPIHandler() {
 		FreeMargin:    "0.1",
 		MarginLevel:   "1000",
 		ProfitTotal:   "1000",
-		Orders:        make(map[string]metatrader.Order),
+		Orders:        make(map[OrderTicket]Order),
 	}
-	ord := metatrader.Order{
+	ord := Order{
 		Symbol:     "EURGBP",
 		TimeOpen:   "2020.12.25 10:08:23",
 		Type:       "1",
@@ -637,7 +616,7 @@ func (e *engineTestSuite) TestWebSocket() {
 	}
 
 	// Create account
-	_, err = e.Push(&metatrader.Message{
+	_, err = e.Push(&Message{
 		Page:       "test",
 		UpdateFreq: "second",
 	})
@@ -664,7 +643,7 @@ func (e *engineTestSuite) TestWebSocket() {
 	}
 
 	// Update account
-	mtresp, err := e.Push(&metatrader.Message{
+	mtresp, err := e.Push(&Message{
 		Balance: "100",
 	})
 	e.Empty(mtresp)
@@ -717,9 +696,9 @@ func (e *engineTestSuite) GetRest(page string) (code int, body string, err error
 	return rec.Code, rec.Body.String(), err
 }
 
-func (e *engineTestSuite) PushToNewInstance(msg *metatrader.Message) (*metatrader.ResponseMsg, error) {
+func (e *engineTestSuite) PushToNewInstance(msg *Message) (*ResponseMsg, error) {
 	errChan := make(chan error)
-	respChan := make(chan *metatrader.ResponseMsg)
+	respChan := make(chan *ResponseMsg)
 	go func() {
 		server, client := net.Pipe()
 		enc := gob.NewEncoder(server)
@@ -735,7 +714,7 @@ func (e *engineTestSuite) PushToNewInstance(msg *metatrader.Message) (*metatrade
 		}
 
 		// Wait for confirmation!
-		resp := new(metatrader.ResponseMsg)
+		resp := new(ResponseMsg)
 		if err := dec2.Decode(&resp); err != nil {
 			errChan <- err
 			return
@@ -751,14 +730,14 @@ func (e *engineTestSuite) PushToNewInstance(msg *metatrader.Message) (*metatrade
 	return <-respChan, err
 }
 
-func (e *engineTestSuite) Push(msg *metatrader.Message) (*metatrader.ResponseMsg, error) {
+func (e *engineTestSuite) Push(msg *Message) (*ResponseMsg, error) {
 	if err := e.Send(msg); err != nil {
 		return nil, err
 	}
 	return e.Recv()
 }
 
-func (e *engineTestSuite) Send(msg *metatrader.Message) error {
+func (e *engineTestSuite) Send(msg *Message) error {
 	errChan := make(chan error)
 	go func() {
 		err := e.enc.Encode(*msg)
@@ -781,11 +760,11 @@ func (e *engineTestSuite) Send(msg *metatrader.Message) error {
 	}
 }
 
-func (e *engineTestSuite) Recv() (*metatrader.ResponseMsg, error) {
+func (e *engineTestSuite) Recv() (*ResponseMsg, error) {
 	errChan := make(chan error)
-	respChan := make(chan *metatrader.ResponseMsg)
+	respChan := make(chan *ResponseMsg)
 	go func() {
-		msg := new(metatrader.ResponseMsg)
+		msg := new(ResponseMsg)
 		err := e.dec.Decode(msg)
 		if err != nil {
 			errChan <- err
