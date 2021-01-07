@@ -10,7 +10,8 @@ import (
 )
 
 // Run this test as:
-// go test -v -count=1 ./metatrader/
+// Comment t.Skip() on line 23
+// go test -v -count=1 ./metatrader/ -run TestMetatrader
 
 const testMetatraderPort string = ":8182"
 
@@ -417,7 +418,7 @@ func ticket(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"])
 			}
 		}
@@ -446,7 +447,7 @@ func symbol(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Equal(t, "market", msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -485,7 +486,7 @@ func timeopen(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Equal(t, "timeopen", msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -524,7 +525,7 @@ func ordtype(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Equal(t, "type", msg.Orders["111"].Type)
@@ -563,7 +564,7 @@ func initvolume(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -602,7 +603,7 @@ func curvolume(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -641,7 +642,7 @@ func priceopen(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -680,7 +681,7 @@ func stoploss(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -719,7 +720,7 @@ func takeprofit(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -758,7 +759,7 @@ func swap(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -797,7 +798,7 @@ func pricesl(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -836,7 +837,7 @@ func ordprofit(t *testing.T) {
 		assert.Zero(t, msg.OrdersCount)
 
 		if assert.Equal(t, 1, len(msg.Orders)) {
-			if assert.Contains(t, msg.Orders, "111") {
+			if assert.Contains(t, msg.Orders, OrderTicket("111")) {
 				assert.Empty(t, msg.Orders["111"].Symbol)
 				assert.Empty(t, msg.Orders["111"].TimeOpen)
 				assert.Empty(t, msg.Orders["111"].Type)
@@ -879,7 +880,7 @@ func heavyMessage(t *testing.T) {
 			for i := 0; i < cnt; i++ {
 				n := strconv.Itoa(i)
 				tick := n + n + n
-				if assert.Contains(t, msg.Orders, tick) {
+				if assert.Contains(t, msg.Orders, OrderTicket(tick)) {
 					assert.Equal(t, tick, msg.Orders[OrderTicket(tick)].Symbol)
 					assert.Equal(t, tick, msg.Orders[OrderTicket(tick)].TimeOpen)
 					assert.Equal(t, tick, msg.Orders[OrderTicket(tick)].Type)

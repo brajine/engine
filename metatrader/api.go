@@ -47,7 +47,7 @@ func (f *Factory) startAPIServer(addr string) {
 	e.GET("/api/rest/:page", f.RestAPIHandler)
 	e.GET("/api/wss/:page", f.WssAPIHandler)
 	e.GET("/swagger/*", echoSwagger.WrapHandler) // including images etc
-	e.Use(middleware.Logger())
+	// e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	f.log.Fatal(e.Start(addr).Error())
 }

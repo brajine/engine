@@ -18,7 +18,10 @@ type viewUpdater struct {
 
 func (v *viewUpdater) run() {
 	go func() {
-		defer v.log.Info("Viewer disconnected ", v.ws.RemoteAddr())
+		defer func() {
+			v.ws.Close()
+			v.log.Info("Viewer disconnected ", v.ws.RemoteAddr())
+		}()
 		for {
 			select {
 			case <-v.closeChan:

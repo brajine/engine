@@ -40,7 +40,7 @@ type Message struct {
 type Order struct {
 	Symbol     string `json:"symbol,omitempty" example:"EURUSD"`
 	TimeOpen   string `json:"timeopen,omitempty" example:"2020-12-20 23:10:01"`
-	Type       string `json:"type,omitempty" example:"OP_BUY"`
+	Type       string `json:"type,omitempty" example:"1"`
 	InitVolume string `json:"initvolume,omitempty" example:"0.1"`
 	CurVolume  string `json:"curvolume,omitempty" example:"0.1"`
 	PriceOpen  string `json:"priceopen,omitempty" example:"1.13234"`
